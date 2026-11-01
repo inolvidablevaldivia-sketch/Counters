@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0b0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Counters</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root{
+    --bg:#0a0b0d; --bg2:#0f1114;
+    --panel:#15171b; --panel2:#1b1e23; --panel3:#23262c;
+    --line:#2b2f36; --line2:#3a3f47;
+    --txt:#e9e7e4; --muted:#9aa0a8; --dim:#6a7078;
+    /* rojo profundo / bordó = encuentro */
+    --red:#9d2038; --red-d:#6b1024; --red-l:#c33a55;
+    /* rosado apagado = periodo */
+    --rose:#c0687f; --rose-d:#8a3d52; --rose-l:#d98ba0;
+    /* púrpura = ovulación */
+    --purp:#8a5cb8; --purp-d:#553077; --purp-l:#a984d6;
+    --steel:#cfd4da; --ok:#4dbf8b;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:
+      radial-gradient(120% 70% at 50% -15%, #1a1d22 0%, var(--bg) 60%) fixed,
+      repeating-linear-gradient(115deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px) fixed,
+      var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    overscroll-behavior:none;-webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  .screen{display:none;min-height:100%;flex-direction:column;
+          padding:calc(var(--safe-t) + 12px) 16px calc(var(--safe-b) + 12px)}
+  .screen.on{display:flex}
+  .muted{color:var(--muted)}.dim{color:var(--dim)}
+  .row{display:flex;align-items:center;gap:10px}
+  .spread{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .hidden{display:none!important}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------- piezas metálicas ---------- */
+  .plate{
+    position:relative;
+    background:
+      linear-gradient(180deg,#1a1d22 0%,#14161a 42%,#111317 100%);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 10px 26px rgba(0,0,0,.5);
+  }
+  .plate::before{
+    content:"";position:absolute;inset:0;border-radius:15px;pointer-events:none;
+    background:repeating-linear-gradient(102deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px);
+    opacity:.7;
+  }
+  .screws span{
+    position:absolute;width:8px;height:8px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #4c525b, #22262c 70%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), 0 1px 2px rgba(0,0,0,.6);
+  }
+  .screws span::after{
+    content:"";position:absolute;left:1px;right:1px;top:50%;height:1px;
+    background:#14171b;transform:translateY(-50%) rotate(var(--r,0deg));
+  }
+  .screws .s1{top:9px;left:9px}.screws .s2{top:9px;right:9px}
+  .screws .s3{bottom:9px;left:9px}.screws .s4{bottom:9px;right:9px}
+
+  /* ---------- cabecera ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .brandmark{display:flex;align-items:center;gap:9px}
+  .brandmark svg{width:26px;height:26px;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+  .brandmark .nm{font-family:var(--mono);font-size:11.5px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;font-weight:700}
+  .iconbtn{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+           background:linear-gradient(180deg,#22252b,#16181c);border:1px solid var(--line2);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 8px rgba(0,0,0,.45);transition:.09s}
+  .iconbtn:active{transform:translateY(1px);box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+  .iconbtn svg{width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---------- EL CONTADOR (clickera) ---------- */
+  #counter{overflow-y:auto}
+  .device-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;padding:4px 0}
+  .device{
+    width:100%;max-width:326px;padding:18px 18px 20px;border-radius:24px;
+    background:linear-gradient(180deg,#20242a 0%,#16181d 46%,#0f1115 100%);
+    border:1px solid #363b43;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07), inset 0 -18px 34px rgba(0,0,0,.5), 0 22px 44px rgba(0,0,0,.6);
+    position:relative;
+  }
+  .device::after{ /* brillo superior */
+    content:"";position:absolute;inset:1px;border-radius:23px;pointer-events:none;
+    background:radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,.07), transparent 70%);
+  }
+  /* ---- pantalla inicial muda: sólo dígitos + botón ---- */
+  .flipclock{display:flex;justify-content:center;gap:7px;margin:2px auto 0;padding:12px 10px 14px;
+             border-radius:14px;background:linear-gradient(180deg,#08090b,#0c0e11 55%,#101318);
+             box-shadow:inset 0 4px 14px rgba(0,0,0,.9),inset 0 -1px 0 rgba(255,255,255,.04);
+             border:1px solid #2a2e35}
+  .flip{position:relative;width:76px;height:100px;border-radius:7px;background:#05070a;
+        box-shadow:0 3px 10px rgba(0,0,0,.7)}
+  .flip .half,.flip .flap{position:absolute;left:0;width:100%;height:50%;overflow:hidden;
+                          background:linear-gradient(180deg,#171b20,#101318)}
+  .flip .half.top,.flip .flap.top{top:0;border-radius:7px 7px 1px 1px;
+        box-shadow:inset 0 2px 0 rgba(255,255,255,.055), inset 0 -8px 12px rgba(0,0,0,.45)}
+  .flip .half.bot,.flip .flap.bot{bottom:0;border-radius:1px 1px 7px 7px;
+        background:linear-gradient(180deg,#12151a,#0b0d10);
+        box-shadow:inset 0 8px 12px rgba(0,0,0,.45), inset 0 -2px 0 rgba(255,255,255,.03)}
+  .flip i{position:absolute;left:0;width:100%;height:100px;line-height:100px;text-align:center;
+          font-style:normal;font-family:"Arial Black","Helvetica Neue",Helvetica,Arial,Roboto,sans-serif;
+          font-size:74px;font-weight:900;color:#f6f4f1;letter-spacing:-.055em;
+          transform:scaleX(.88);text-shadow:0 1px 0 #000}
+  .flip .half.top i,.flip .flap.top i{top:0}
+  .flip .half.bot i,.flip .flap.bot i{top:-50px}
+  .flip .flap{display:none;z-index:4;backface-visibility:hidden}
+  .flip .flap.on{display:block}
+  .flip .flap.top{transform-origin:bottom;animation:flipTop .28s ease-in forwards}
+  .flip .flap.bot{transform-origin:top;transform:rotateX(90deg);animation:flipBot .26s .28s ease-out forwards}
+  @keyframes flipTop{from{transform:rotateX(0)}to{transform:rotateX(-90deg)}}
+  @keyframes flipBot{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
+  .flip .seam{position:absolute;top:50%;left:0;right:0;height:3px;transform:translateY(-1.5px);
+              background:#040506;z-index:5;pointer-events:none;
+              box-shadow:0 1px 0 rgba(255,255,255,.09), 0 -1px 0 rgba(0,0,0,.9)}
+  .flip .hinge{position:absolute;top:calc(50% - 5px);width:6px;height:10px;z-index:6;border-radius:2px;
+               background:linear-gradient(180deg,#2a2f36,#12151a);box-shadow:0 1px 3px rgba(0,0,0,.8)}
+  .flip .hinge.l{left:-3px}.flip .hinge.r{right:-3px}
+  .hoytag{text-align:center;font-family:var(--mono);font-size:9.5px;letter-spacing:.3em;
+          color:#5d646d;margin-top:10px;text-transform:uppercase;font-weight:700}
+  .winlabel{display:flex;align-items:center;justify-content:space-between;
+            font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:#5d646d;
+            text-transform:uppercase;margin:2px 4px 8px;font-weight:700}
+  body.locked .hidepre{display:none!important}
+
+  /* ---- botón mecánico (estilo foto: bisel metálico + domo mate) ---- */
+  .btnstage{position:relative;display:flex;align-items:center;justify-content:center;margin:20px 0 6px}
+  .collar{
+    width:214px;height:214px;border-radius:50%;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      conic-gradient(from 210deg at 50% 50%, #521626 0deg, #7a2436 45deg, #45101d 110deg,
+                     #6b1c2c 190deg, #3d0d18 250deg, #742032 320deg, #521626 360deg);
+    box-shadow:
+      0 0 0 1px #2b0a12,
+      inset 0 2px 3px rgba(255,255,255,.16),
+      inset 0 -8px 18px rgba(0,0,0,.75),
+      0 14px 30px rgba(0,0,0,.62);
+  }
+  .collar::before{ /* ranura oscura entre bisel y domo */
+    content:"";position:absolute;inset:13px;border-radius:50%;
+    background:radial-gradient(circle at 50% 34%, #180a0f 0%, #0b0407 62%, #150609 100%);
+    box-shadow:inset 0 3px 8px rgba(0,0,0,.95), inset 0 -2px 6px rgba(255,255,255,.05);
+  }
+  .collar::after{ /* brillo del bisel */
+    content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:linear-gradient(160deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 34%,
+                                        rgba(0,0,0,.35) 78%, rgba(255,255,255,.07) 100%);
+    mix-blend-mode:screen;opacity:.7;
+  }
+  #bigBtn{
+    width:150px;height:150px;border-radius:50%;position:relative;z-index:2;
+    background:
+      radial-gradient(circle at 50% 30%, #2e3238 0%, #22262b 40%, #14171b 74%, #0c0e11 100%);
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,.10),
+      inset 0 -8px 16px rgba(0,0,0,.9),
+      0 6px 14px rgba(0,0,0,.6);
+    transition:transform .07s ease, box-shadow .07s ease;
+    overflow:hidden;
+  }
+  #bigBtn::before{ /* textura mate */
+    content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:
+      repeating-radial-gradient(circle at 50% 45%, rgba(255,255,255,.020) 0 1px, transparent 1px 3px),
+      repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.014) 0deg 2deg, transparent 2deg 5deg);
+    opacity:.9;
+  }
+  #bigBtn::after{ /* luz superior */
+    content:"";position:absolute;left:14%;right:14%;top:6%;height:36%;border-radius:50%;
+    background:linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,0));
+    filter:blur(2px);pointer-events:none;
+  }
+  #bigBtn:active{
+    transform:translateY(2px) scale(.982);
+    box-shadow:inset 0 6px 14px rgba(0,0,0,.95), 0 2px 6px rgba(0,0,0,.5);
+  }
+  .stamp{
+    position:absolute;right:2px;bottom:30%;pointer-events:none;
+    font-family:var(--mono);font-weight:700;font-size:17px;color:#ff8fa3;opacity:0;
+    text-shadow:0 0 12px rgba(255,80,110,.65);z-index:5;
+  }
+  .stamp.on{animation:stampUp .85s ease-out forwards}
+  @keyframes stampUp{
+    0%{opacity:0;transform:translateY(10px) scale(.85)}
+    20%{opacity:1;transform:translateY(0) scale(1)}
+    100%{opacity:0;transform:translateY(-30px) scale(1)}
+  }
+
+  /* dial semanal */
+  .dialwrap{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
+  #dial{display:block}
+  #wstrip{display:none;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:16px}
+  .wday{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .wbar{width:100%;height:46px;border-radius:5px;background:#0c0e11;border:1px solid #22262c;
+        display:flex;align-items:flex-end;overflow:hidden;box-shadow:inset 0 2px 5px rgba(0,0,0,.7)}
+  .wbar i{display:block;width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#c33a55,#6b1024);
+          box-shadow:0 0 8px rgba(195,58,85,.4)}
+  .wday span{font-family:var(--mono);font-size:9px;color:#5f666e;font-weight:700}
+  .wday.today span{color:#58a6ff}
+  .wday .n{font-family:var(--mono);font-size:8.5px;color:#4f555d;line-height:1}
+
+  /* compacto después del PIN: el panel de ciclo entra en pantalla */
+  body.auth .collar{width:172px;height:172px}
+  body.auth #bigBtn{width:120px;height:120px}
+  body.auth .flip{width:62px;height:82px}
+  body.auth .flip i{font-size:60px;height:82px;line-height:82px}
+  body.auth .flip .half.bot i,body.auth .flip .flap.bot i{top:-41px}
+  body.auth .device{padding:15px 15px 16px;border-radius:20px}
+  body.auth .btnstage{margin:16px 0 4px}
+  body.auth .device-wrap{flex:0 0 auto;padding:0}
+  body.auth #counter{justify-content:flex-start}
+  body.auth .cyclepanel{margin-top:14px}
+  body.auth #wstrip{display:grid}
+
+  /* ---------- botones de ciclo (post-PIN) ---------- */
+  .cyclepanel{margin-top:14px}
+  .grouplabel{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9.5px;
+              letter-spacing:.2em;text-transform:uppercase;color:#6d747d;font-weight:700;margin:0 0 6px 3px}
+  .grouplabel i{width:9px;height:9px;border-radius:3px;display:inline-block}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+  .mbtn{
+    display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 10px;border-radius:12px;
+    background:linear-gradient(180deg,#23262c,#171a1e);border:1px solid var(--line2);
+    font-size:13.5px;font-weight:650;letter-spacing:.02em;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 9px rgba(0,0,0,.4);transition:.09s;
+  }
+  .mbtn:active{transform:translateY(1px);box-shadow:inset 0 2px 6px rgba(0,0,0,.7)}
+  .mbtn.rose{border-color:rgba(192,104,127,.42)}
+  .mbtn.purp{border-color:rgba(138,92,184,.42)}
+  .mbtn.rose .dot{background:linear-gradient(180deg,var(--rose-l),var(--rose-d))}
+  .mbtn.purp .dot{background:linear-gradient(180deg,var(--purp-l),var(--purp-d))}
+  .mbtn .dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 8px rgba(0,0,0,.6)}
+
+  /* ---------- barra inferior ---------- */
+  #tabs{position:fixed;left:10px;right:10px;bottom:calc(var(--safe-b) + 8px);z-index:50;
+        display:flex;gap:3px;padding:5px;border-radius:15px;
+        background:rgba(17,19,23,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+        border:1px solid var(--line2);box-shadow:0 12px 32px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
+  #tabs button{flex:1;padding:9px 2px;border-radius:11px;font-size:10px;font-weight:700;color:var(--dim);
+               display:flex;flex-direction:column;align-items:center;gap:3px;transition:.12s;
+               font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+  #tabs button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  #tabs button.on{color:var(--txt);background:linear-gradient(180deg,#282c33,#1c1f24);
+                  box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+  body.locked #tabs{display:none}
+  .screen:not(#counter){padding-bottom:calc(var(--safe-b) + 92px)}
+  #counter{padding-bottom:calc(var(--safe-b) + 12px)}
+  body:not(.locked) #counter{padding-bottom:calc(var(--safe-b) + 92px)}
+
+  /* ---------- lock ---------- */
+  #lock{justify-content:center;align-items:center;text-align:center}
+  .lockhead{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
+  .lockhead svg{width:56px;height:56px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.7))}
+  .lockhead .t{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;font-weight:700}
+  .dots{display:flex;gap:15px;justify-content:center;height:14px;margin-bottom:24px}
+  .dot{width:13px;height:13px;border-radius:50%;background:#15181c;
+       box-shadow:inset 0 2px 4px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.06);transition:.14s}
+  .dot.f{background:radial-gradient(circle at 50% 35%, var(--red-l), var(--red-d));
+         box-shadow:0 0 12px rgba(157,32,56,.7), inset 0 1px 0 rgba(255,255,255,.2)}
+  .keypad{display:grid;grid-template-columns:repeat(3,72px);gap:13px;justify-content:center}
+  .key{height:66px;border-radius:14px;font-family:var(--mono);font-size:23px;font-weight:700;color:#dcdad6;
+       background:linear-gradient(180deg,#24282e,#16191d);border:1px solid var(--line2);
+       box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 4px 10px rgba(0,0,0,.5);
+       display:flex;align-items:center;justify-content:center;transition:.07s}
+  .key:active{transform:translateY(2px);box-shadow:inset 0 3px 8px rgba(0,0,0,.85)}
+  .key.ghost{background:none;border:0;box-shadow:none;font-size:16px;color:var(--muted)}
+  .lockmsg{min-height:20px;font-size:13px;color:#e06478;margin-top:14px;font-weight:600}
+  .shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}
+                   60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.055)}100%{transform:scale(1)}}
+  .pop{animation:pop .34s ease}
+
+  /* ---------- pantallas internas ---------- */
+  .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+  .hd h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .card{background:linear-gradient(180deg,#1a1d22,#14161a);border:1px solid var(--line);border-radius:16px;
+        padding:15px;margin-bottom:11px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 18px rgba(0,0,0,.35)}
+  .card h3{margin:0 0 11px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+           color:#7d848d;font-weight:700}
+  .seg{display:flex;background:#13151a;border:1px solid var(--line);border-radius:12px;padding:4px;gap:3px}
+  .seg button{flex:1;padding:9px 4px;font-size:12.5px;border-radius:9px;color:var(--muted);font-weight:700;
+              font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;transition:.12s}
+  .seg button.on{background:linear-gradient(180deg,#262a31,#1b1e23);color:var(--txt);
+                 box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+  .stat{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #23262b;font-size:13.5px}
+  .stat:last-child{border:0;padding-bottom:0}
+  .stat span:first-child{color:var(--muted)}
+  .stat b{font-weight:700;font-family:var(--mono);font-size:13px;text-align:right}
+
+  /* calendario */
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .calhead .m{font-size:15.5px;font-weight:700;letter-spacing:.01em}
+  .navbtn{width:36px;height:36px;border-radius:10px;background:linear-gradient(180deg,#23262c,#171a1e);
+          border:1px solid var(--line2);display:flex;align-items:center;justify-content:center}
+  .navbtn:active{transform:translateY(1px)}
+  .navbtn svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;padding:0 7px}
+  .dow div{text-align:center;font-family:var(--mono);font-size:10px;color:#5f666e;font-weight:700;letter-spacing:.06em}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;background:#0d0f12;border:1px solid var(--line);
+        border-radius:14px;padding:7px;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+  .cell{position:relative;aspect-ratio:1;border-radius:11px;display:flex;align-items:center;justify-content:center;
+        font-size:14.5px;font-weight:600;color:#d6d4d1;font-family:var(--mono);
+        transition:.1s;border:1px solid transparent}
+  .cell:active{background:#1e2227}
+  .cell.mut{color:#3d434b}
+  .cell.period{background:linear-gradient(180deg,rgba(192,104,127,.32),rgba(138,61,82,.16));
+               border-color:rgba(192,104,127,.45);color:#f6e3e9}
+  .cell.ovu{background:linear-gradient(180deg,rgba(138,92,184,.34),rgba(85,48,119,.16));
+            border-color:rgba(138,92,184,.5);color:#eee4f8}
+  .cell.pred{opacity:.85}
+  .cell.pred.period{background:none;border-style:dashed;border-color:rgba(192,104,127,.6);color:#c99aab}
+  .cell.pred.ovu{background:none;border-style:dashed;border-color:rgba(138,92,184,.6);color:#b9a3d0}
+  .cell.fert{background:linear-gradient(180deg,rgba(138,92,184,.14),rgba(85,48,119,.08));
+             border-color:rgba(138,92,184,.22)}
+  .cell.today{box-shadow:inset 0 0 0 2px #58a6ff}
+  .cell.sel{box-shadow:inset 0 0 0 2px #f2efe9}
+  .hit{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;
+       background:linear-gradient(180deg,var(--red-l),var(--red));
+       box-shadow:0 0 7px rgba(195,58,85,.9)}
+  .sup{position:absolute;top:1px;right:2px;font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;
+       background:linear-gradient(180deg,#b32b45,#7d1226);border-radius:5px;min-width:13px;height:13px;
+       line-height:13px;text-align:center;padding:0 3px;box-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .sup.big{background:linear-gradient(180deg,#d4425e,#961c33)}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:11px;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  /* ciclo */
+  .cbar{height:32px;border-radius:9px;background:#0d0f12;border:1px solid var(--line);display:flex;
+        overflow:hidden;margin:12px 0 8px;box-shadow:inset 0 2px 7px rgba(0,0,0,.6)}
+  .cbar .s{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+           font-size:9.5px;font-weight:700;color:#0a0b0d}
+  .s-men{background:linear-gradient(180deg,var(--rose-l),var(--rose-d));color:#1a0d12!important}
+  .s-fol{background:#191c21}
+  .s-ovu{background:linear-gradient(180deg,var(--purp-l),var(--purp-d));color:#f2eafc!important}
+  .s-lut{background:#191c21}
+
+  /* listas */
+  .tl-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #23262b}
+  .tl-item:last-child{border:0}
+  .tl-item .when{font-size:13.5px;font-weight:600}
+  .tl-item .sub{font-size:11.5px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
+  .editbtn{display:flex;align-items:center;gap:7px;padding:6px 10px 6px 7px;border-radius:9px;
+           background:#12151a;border:1px solid #262a31;color:#dcdad6;font-size:13.5px;font-weight:700;
+           font-family:var(--mono);transition:.1s}
+  .editbtn:active{background:#1b1f25}
+  .editbtn .pen{width:12px;height:12px;stroke:#7d848d;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .tchip{display:inline-block;margin:2px 4px 2px 0;padding:3px 7px;border-radius:6px;
+         background:#12151a;border:1px solid #262a31;color:#b9bfc6;font-family:var(--mono);font-size:11px}
+  .tchip:active{background:#1b1f25}
+  .del{width:32px;height:32px;border-radius:9px;background:#1e1417;color:#d06579;border:1px solid #3a2028;
+       display:flex;align-items:center;justify-content:center;flex:none;transition:.1s}
+  .del:active{background:#2b1a1f}
+  .del svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+  /* inputs */
+  input[type=number],input[type=date]{background:#0f1115;border:1px solid var(--line2);color:var(--txt);
+    border-radius:10px;padding:11px 12px;font-size:15px;width:100%;font-family:var(--mono)}
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:.04em}
+  .btn{background:linear-gradient(180deg,#2a2f36,#1c2025);color:var(--txt);font-weight:700;font-size:14px;
+       padding:13px;border-radius:12px;width:100%;text-align:center;transition:.09s;border:1px solid var(--line2);
+       box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 4px 12px rgba(0,0,0,.4)}
+  .btn:active{transform:translateY(1px);box-shadow:inset 0 2px 7px rgba(0,0,0,.7)}
+  .btn.primary{background:linear-gradient(180deg,#a5263f,#6d1022);border-color:#8d1f34;color:#fff;
+               box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 6px 18px rgba(125,18,38,.4)}
+  .note{font-size:12px;line-height:1.6;color:var(--muted)}
+  .empty{text-align:center;color:var(--dim);font-size:13px;padding:22px 0}
+
+  /* modal + toast + undo */
+  #modal{position:fixed;inset:0;background:rgba(4,5,7,.78);display:none;align-items:flex-end;z-index:80;
+         backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #modal.on{display:flex}
+  .sheet{background:#121418;width:100%;border-radius:20px 20px 0 0;padding:20px 18px calc(var(--safe-b) + 20px);
+         border-top:1px solid var(--line2);max-height:88vh;overflow-y:auto;animation:up .26s cubic-bezier(.2,.9,.2,1)}
+  @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .sheet h2{margin:0 0 4px;font-size:17px}
+  .sheet .sub{font-size:12.5px;color:var(--muted);margin-bottom:16px}
+  .toast{position:fixed;bottom:calc(var(--safe-b) + 96px);left:50%;transform:translate(-50%,26px);opacity:0;
+         background:linear-gradient(180deg,#262b32,#1a1d22);border:1px solid var(--line2);padding:9px 16px;
+         border-radius:11px;font-size:12.5px;z-index:99;transition:transform .26s cubic-bezier(.2,.9,.2,1),opacity .2s;
+         box-shadow:0 10px 26px rgba(0,0,0,.6);max-width:88vw;text-align:center;pointer-events:none;font-weight:600}
+  .toast.on{transform:translate(-50%,0);opacity:1}
+  #undoBar{position:fixed;left:14px;right:14px;bottom:calc(var(--safe-b) + 12px);z-index:60;
+           background:linear-gradient(180deg,#262b32,#1a1d22);border:1px solid var(--line2);border-radius:13px;
+           padding:12px 15px;display:flex;align-items:center;justify-content:space-between;
+           box-shadow:0 12px 30px rgba(0,0,0,.6);
+           transform:translateY(calc(100% + 130px));opacity:0;pointer-events:none;
+           transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .2s}
+  #undoBar.on{transform:translateY(0);opacity:1;pointer-events:auto}
+  #undoBar .tx{font-size:13px;font-weight:600}
+  #undoBtn{color:var(--rose-l);font-weight:800;font-size:12.5px;font-family:var(--mono);letter-spacing:.08em}
+</style>
+</head>
+<body class="locked">
+
+<!-- ================= LOCK ================= -->
+<div id="lock" class="screen">
+  <div class="lockhead">
+    <svg viewBox="0 0 128 128" aria-hidden="true">
+      <defs>
+        <linearGradient id="lBody" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#31363e"/><stop offset=".45" stop-color="#1b1e24"/><stop offset="1" stop-color="#0d0f12"/>
+        </linearGradient>
+        <linearGradient id="lEnc" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#b02038"/><stop offset=".55" stop-color="#8a1327"/><stop offset="1" stop-color="#5d0a18"/>
+        </linearGradient>
+      </defs>
+      <rect x="15" y="16" width="98" height="96" rx="22" fill="url(#lBody)" stroke="#454b55" stroke-width="2"/>
+      <circle cx="64" cy="53" r="24" fill="url(#lEnc)"/>
+      <circle cx="64" cy="53" r="17" fill="#23272d" stroke="#0b0d10"/>
+      <rect x="33" y="82" width="62" height="21" rx="6" fill="#07090c" stroke="#3c424b" stroke-width="1.4"/>
+      <text x="64" y="102.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="15"
+            font-weight="700" letter-spacing="3.2" fill="#f3f1ee">001</text>
+    </svg>
+    <div class="t">Counters</div>
+  </div>
+  <div class="dots" id="dots"></div>
+  <div class="keypad" id="keypad"></div>
+  <div class="lockmsg" id="lockMsg"></div>
+  <div id="lockHint" class="note" style="margin-top:26px;font-size:11.5px;line-height:1.6">
+    PIN inicial <b style="color:var(--txt)">1234</b> · cámbialo en Ajustes
+  </div>
+</div>
+
+<!-- ================= CONTADOR ================= -->
+<div id="counter" class="screen on">
+  <div class="topbar">
+    <div class="brandmark" id="brandBtn">
+      <svg viewBox="0 0 128 128" aria-hidden="true">
+        <rect x="15" y="16" width="98" height="96" rx="22" fill="#1b1e24" stroke="#454b55" stroke-width="2"/>
+        <circle cx="64" cy="53" r="24" fill="#8a1327"/>
+        <circle cx="64" cy="53" r="17" fill="#23272d" stroke="#0b0d10"/>
+        <rect x="33" y="82" width="62" height="21" rx="6" fill="#07090c" stroke="#3c424b" stroke-width="1.4"/>
+        <text x="64" y="102.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace"
+              font-size="15" font-weight="700" letter-spacing="3.2" fill="#f3f1ee">001</text>
+      </svg>
+      <span class="nm">Counters</span>
+    </div>
+    <button class="iconbtn" id="lockBtn" aria-label="Acceso">
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+    </button>
+  </div>
+
+  <div id="demoNote" class="note hidden" style="text-align:center;font-size:11px;margin-bottom:8px;color:#c9a86a">
+    Vista previa sin guardado · instálala en tu teléfono
+  </div>
+
+  <div class="device-wrap">
+    <div class="device">
+      <div class="screws"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div>
+      <div class="flipclock" id="flipclock"></div>
+      <div class="hoytag hidepre" id="phaseTag">encuentros hoy</div>
+
+      <div class="btnstage">
+        <div class="collar">
+          <button id="bigBtn" aria-label="Registrar"></button>
+        </div>
+        <div class="stamp" id="stamp">+1</div>
+      </div>
+
+      <div id="wstrip"></div>
+    </div>
+  </div>
+
+  <!-- sólo después del PIN -->
+  <div class="cyclepanel authonly hidden" id="cyclePanel">
+    <div class="grouplabel"><i style="background:linear-gradient(180deg,var(--rose-l),var(--rose-d))"></i> Periodo</div>
+    <div class="duo">
+      <button class="mbtn rose" data-quick="periodStart"><span class="dot"></span> Inicio</button>
+      <button class="mbtn rose" data-quick="periodEnd"><span class="dot"></span> Fin</button>
+    </div>
+    <div class="grouplabel"><i style="background:linear-gradient(180deg,var(--purp-l),var(--purp-d))"></i> Ovulación</div>
+    <div class="duo">
+      <button class="mbtn purp" data-quick="ovulationStart"><span class="dot"></span> Inicio</button>
+      <button class="mbtn purp" data-quick="ovulationEnd"><span class="dot"></span> Fin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CALENDARIO ================= -->
+<div id="cal" class="screen">
+  <div class="hd">
+    <h1>Calendario</h1>
+    <div class="row">
+      <button class="iconbtn" id="calToday" aria-label="Hoy">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="iconbtn" id="calLock" aria-label="Bloquear">
+        <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="calhead">
+      <button class="navbtn" id="prevM"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
+      <div class="m" id="monthLabel">—</div>
+      <button class="navbtn" id="nextM"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i style="background:linear-gradient(180deg,#c33a55,#6b1024)"></i>Encuentro</span>
+      <span><i style="background:linear-gradient(180deg,#d98ba0,#8a3d52)"></i>Periodo</span>
+      <span><i style="background:linear-gradient(180deg,#a984d6,#553077)"></i>Ovulación</span>
+      <span><i style="background:rgba(138,92,184,.25)"></i>Ventana fértil</span>
+      <span><i style="background:transparent;border:1px dashed rgba(192,104,127,.8)"></i>Predicción</span>
+    </div>
+    <div class="card" style="margin-top:12px" id="dayCard"></div>
+  </div>
+</div>
+
+<!-- ================= CICLO ================= -->
+<div id="cycle" class="screen">
+  <div class="hd"><h1>Ciclo</h1>
+    <button class="iconbtn" id="cycleLock" aria-label="Bloquear">
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+    </button>
+  </div>
+  <div class="scroll" id="cycleBody"></div>
+</div>
+
+<!-- ================= DATOS ================= -->
+<div id="stats" class="screen">
+  <div class="hd"><h1>Datos</h1>
+    <button class="iconbtn" id="statsLock" aria-label="Bloquear">
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+    </button>
+  </div>
+  <div class="seg" style="margin-bottom:12px">
+    <button data-range="week" class="on">Semana</button>
+    <button data-range="month">Mes</button>
+    <button data-range="all">Todo</button>
+  </div>
+  <div class="scroll" id="statsBody"></div>
+</div>
+
+<!-- ================= AJUSTES ================= -->
+<div id="config" class="screen">
+  <div class="hd"><h1>Ajustes</h1>
+    <button class="iconbtn" id="configLock" aria-label="Bloquear">
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+    </button>
+  </div>
+  <div class="scroll" id="configBody"></div>
+</div>
+
+<!-- barra inferior (sólo post-PIN) -->
+<nav id="tabs">
+  <button data-tab="counter" class="on">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>Contador
+  </button>
+  <button data-tab="cal">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3.5v3M16 3.5v3"/></svg>Calendario
+  </button>
+  <button data-tab="cycle">
+    <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3.2-6.4"/><path d="M20 4v5h-5"/></svg>Ciclo
+  </button>
+  <button data-tab="stats">
+    <svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>Datos
+  </button>
+  <button data-tab="config">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>Ajustes
+  </button>
+</nav>
+
+<div id="undoBar"><div class="tx" id="undoTxt">Registrado</div><button id="undoBtn">DESHACER</button></div>
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   Counters — datos locales, sin servidor.
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const KEY = 'counters.v2';
+const DEFAULTS = {
+  hits: [], cycles: [],
+  cfg: { avgLen: 28, avgBleed: 5, ovuOffset: 14 },
+  pin: '1234', lockSecs: 60, haptic: true, sound: false, hidePreCount: false
+};
+let S = load();
+let unlocked = false;
+let pendingTab = 'counter';
+let undoTimer = null;
+let viewMonth = new Date(); viewMonth.setDate(1);
+let selectedDay = null;
+let statsRange = 'week';
+let prevTodayCount = null;
+const HIST_LIMIT = 60;
+const PRIVATE = ['cal','cycle','stats','config'];
+
+let STORAGE_OK = true;
+try { localStorage.setItem('__p','1'); localStorage.removeItem('__p'); } catch(e){ STORAGE_OK = false; }
+
+function load(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ d = null; }
+  const s = Object.assign({}, DEFAULTS, d || {});
+  s.cfg = Object.assign({}, DEFAULTS.cfg, (d && d.cfg) || {});
+  s.hits = s.hits || []; s.cycles = s.cycles || [];
+  return s;
+}
+function save(){
+  if (!STORAGE_OK) return;
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('No se pudo guardar'); }
+}
+
+/* ---------- fechas ---------- */
+const pad = n => String(n).padStart(2,'0');
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const todayKey = () => dkey(new Date());
+const addDaysKey = (k,n) => { const d = parseKey(k); d.setDate(d.getDate()+n); return dkey(d); };
+const diffDays = (a,b) => Math.round((parseKey(b) - parseKey(a)) / 86400000);
+const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DAYS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const fmtTime = ts => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtDateLong = k => { const d = parseKey(k); return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`; };
+const cap1 = x => x ? x[0].toUpperCase() + x.slice(1) : x;
+const fmtShort = k => { const d = parseKey(k); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`; };
+function relDay(k){
+  const t = todayKey();
+  if (k === t) return 'hoy';
+  if (k === addDaysKey(t,-1)) return 'ayer';
+  if (k === addDaysKey(t,1)) return 'mañana';
+  const dd = diffDays(t,k);
+  return dd > 0 ? `en ${dd} día${dd===1?'':'s'}` : `hace ${-dd} día${dd===-1?'':'s'}`;
+}
+
+/* ---------- feedback ---------- */
+function buzz(p){ if (S.haptic && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
+let actx = null;
+function beep(){
+  if (!S.sound) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.type='square'; o.frequency.value = 180; o.frequency.exponentialRampToValueAtTime(90, actx.currentTime+.05);
+    g.gain.setValueAtTime(.0001, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.10, actx.currentTime+.006);
+    g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime+.07);
+    o.start(); o.stop(actx.currentTime+.08);
+  }catch(e){}
+}
+let toastTimer = null;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('on'), 1800);
+}
+
+/* =========================================================
+   BLOQUEO / PIN
+   ========================================================= */
+let pinBuf = '';
+function renderDots(){
+  $('#dots').innerHTML = Array.from({length:4},(_,i)=>`<div class="dot ${i<pinBuf.length?'f':''}"></div>`).join('');
+}
+function buildKeypad(){
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  $('#keypad').innerHTML = keys.map(k=> k === '' ? '<div></div>'
+    : k === '⌫' ? '<button class="key ghost" data-k="del">⌫</button>'
+    : `<button class="key" data-k="${k}">${k}</button>`).join('');
+}
+buildKeypad(); renderDots();
+$('#keypad').addEventListener('click', e=>{
+  const b = e.target.closest('[data-k]'); if (!b) return;
+  const k = b.dataset.k; buzz(8);
+  if (k === 'del'){ pinBuf = pinBuf.slice(0,-1); renderDots(); return; }
+  if (pinBuf.length >= 4) return;
+  pinBuf += k; renderDots();
+  if (pinBuf.length === 4) setTimeout(tryPin, 90);
+});
+function tryPin(){
+  if (pinBuf === S.pin){
+    pinBuf = ''; renderDots(); $('#lockMsg').textContent = '';
+    unlocked = true;
+    document.body.classList.remove('locked');
+    document.body.classList.add('auth');
+    $('#lock').classList.remove('on');
+    $$('.authonly').forEach(el=>el.classList.remove('hidden'));
+    go(pendingTab || 'counter');
+    renderAll();
+  } else {
+    pinBuf = ''; renderDots(); buzz([30,60,30]);
+    $('#lock').classList.add('shake');
+    $('#lockMsg').textContent = 'PIN incorrecto';
+    setTimeout(()=>$('#lock').classList.remove('shake'), 420);
+  }
+}
+function showLock(next){
+  unlocked = false;
+  pendingTab = next || 'counter';
+  ['counter','cal','cycle','stats','config'].forEach(id=>$('#'+id).classList.remove('on'));
+  $('#lock').classList.add('on');
+  document.body.classList.add('locked');
+  document.body.classList.remove('auth');
+  $$('.authonly').forEach(el=>el.classList.add('hidden'));
+  pinBuf = ''; renderDots(); $('#lockMsg').textContent = '';
+  const hint = $('#lockHint');
+  if (hint) hint.style.display = (S.pin === '1234') ? 'block' : 'none';
+  renderCounter();
+  window.scrollTo(0,0);
+}
+
+/* =========================================================
+   NAV
+   ========================================================= */
+function go(tab){
+  if (tab !== 'counter' && !unlocked){ showLock(tab); return; }
+  ['counter','cal','cycle','stats','config'].forEach(id=> $('#'+id).classList.toggle('on', id === tab));
+  $$('#tabs button').forEach(b=> b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'cal') renderCal();
+  if (tab === 'cycle') renderCycle();
+  if (tab === 'stats') renderStats();
+  if (tab === 'config') renderConfig();
+  if (tab === 'counter') renderCounter();
+  document.querySelectorAll('.scroll').forEach(el=> el.scrollTop = 0);
+  window.scrollTo(0,0);
+}
+$('#tabs').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if (b) go(b.dataset.tab);
+});
+
+/* =========================================================
+   CICLO (modelo)
+   ========================================================= */
+function cycleModel(){
+  const cyc = S.cycles.slice().sort((a,b)=> (a.start||'9999') < (b.start||'9999') ? -1 : 1);
+  const lens = [];
+  for (let i=0;i<cyc.length-1;i++){
+    if (cyc[i].start && cyc[i+1].start){
+      const d = diffDays(cyc[i].start, cyc[i+1].start);
+      if (d >= 18 && d <= 60) lens.push(d);
+    }
+  }
+  const recent = lens.slice(-6);
+  const avg = recent.length ? Math.round(recent.reduce((a,b)=>a+b,0)/recent.length) : S.cfg.avgLen;
+  const bleeds = cyc.filter(c=>c.start&&c.end).map(c=>diffDays(c.start,c.end)+1).filter(d=>d>=1&&d<=12);
+  const avgBleed = bleeds.length ? Math.round(bleeds.reduce((a,b)=>a+b,0)/bleeds.length) : S.cfg.avgBleed;
+  const withStart = cyc.filter(c=>c.start);
+  const last = withStart.length ? withStart[withStart.length-1] : null;
+  const ovus = cyc.filter(c=>c.start && c.ovStart).map(c=>diffDays(c.start,c.ovStart)+1).filter(d=> d>=7 && d<=avg-1);
+  const ovuRaw = ovus.length ? Math.round(ovus.reduce((a,b)=>a+b,0)/ovus.length) : (avg - S.cfg.ovuOffset + 1);
+  const ovuDay = Math.min(Math.max(ovuRaw,7), Math.max(8, avg-1));
+
+  const M = { cyc, lens, avg, avgBleed, ovuDay, last, predictedStart:null, predictedEnd:null, predictedOvu:null,
+              confidence: recent.length>=3 ? 'alta' : recent.length>=1 ? 'media' : 'baja', samples: recent.length };
+  if (last){
+    let p = addDaysKey(last.start, avg);
+    while (diffDays(todayKey(), p) < -2) p = addDaysKey(p, avg);
+    M.predictedStart = p;
+    M.predictedEnd = addDaysKey(p, avgBleed-1);
+    let o = addDaysKey(last.start, ovuDay-1);
+    while (diffDays(todayKey(), o) < -1) o = addDaysKey(o, avg);
+    M.predictedOvu = o;
+  }
+  return M;
+}
+function cyclePhase(k, M){
+  for (const c of M.cyc){
+    if (c.start){
+      const be = c.end ? c.end : addDaysKey(c.start, M.avgBleed-1);
+      if (k >= c.start && k <= be) return 'men';
+    }
+    if (c.ovStart){
+      const oe = c.ovEnd || c.ovStart;
+      if (k >= c.ovStart && k <= oe) return 'ovu';
+    }
+  }
+  if (M.predictedStart && k >= M.predictedStart && k <= M.predictedEnd) return 'menPred';
+  if (M.predictedOvu){
+    const a = addDaysKey(M.predictedOvu,-3), b = addDaysKey(M.predictedOvu,1);
+    if (k >= a && k <= b) return 'fertPred';
+  }
+  return null;
+}
+
+/* =========================================================
+   REGISTRO
+   ========================================================= */
+function doHit(){
+  const now = Date.now();
+  S.hits.push({ t: now });
+  save();
+  buzz([12,22,12]); beep();
+  const dev = $('.device'); if (dev){ dev.classList.remove('pop'); void dev.offsetWidth; dev.classList.add('pop'); }
+  const st = $('#stamp'); if (st){ st.classList.remove('on'); void st.offsetWidth; st.classList.add('on'); }
+  renderCounter(true);
+  showUndo(fmtTime(now), ()=>{
+    const i = S.hits.findIndex(h=>h.t === now);
+    if (i >= 0) S.hits.splice(i,1);
+    save(); renderCounter(true); toast('Deshecho');
+  });
+}
+function showUndo(text, fn){
+  const bar = $('#undoBar');
+  $('#undoTxt').textContent = text;
+  bar.classList.add('on');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(()=>bar.classList.remove('on'), 5000);
+  $('#undoBtn').onclick = ()=>{ clearTimeout(undoTimer); bar.classList.remove('on'); fn(); };
+}
+$('#bigBtn').addEventListener('click', doHit);
+
+/* marcas de ciclo (sólo post-PIN) */
+function cycleForOvu(){
+  const w = S.cycles.filter(c=>c.start).sort((a,b)=> (a.start||'') < (b.start||'') ? -1 : 1);
+  return w.length ? w[w.length-1] : (S.cycles.filter(c=>!c.start).pop() || null);
+}
+function markCycle(kind, k, quiet){
+  let msg = '';
+  if (kind === 'periodStart'){
+    if (S.cycles.some(c=>c.start === k)){ if (!quiet) toast('Ese día ya está marcado'); return; }
+    S.cycles.push({ start:k, end:null, ovStart:null, ovEnd:null });
+    msg = 'Inicio de periodo ✓';
+  }
+  if (kind === 'periodEnd'){
+    const c = S.cycles.filter(c=>c.start && !c.end).pop();
+    if (!c){ toast('Primero marca el inicio del periodo'); return; }
+    if (k < c.start){ toast('No puede terminar antes de empezar'); return; }
+    c.end = k; msg = 'Fin de periodo ✓';
+  }
+  if (kind === 'ovulationStart'){
+    let c = cycleForOvu();
+    if (!c){ c = { start:null, end:null, ovStart:null, ovEnd:null }; S.cycles.push(c); }
+    c.ovStart = k; if (!c.ovEnd) c.ovEnd = k;
+    msg = 'Inicio de ovulación ✓';
+  }
+  if (kind === 'ovulationEnd'){
+    let c = cycleForOvu() || S.cycles.filter(x=>x.ovStart).pop();
+    if (!c || !c.ovStart){ toast('Primero marca el inicio de ovulación'); return; }
+    if (k < c.ovStart){ toast('Fecha anterior al inicio'); return; }
+    c.ovEnd = k; msg = 'Fin de ovulación ✓';
+  }
+  save(); buzz(15);
+  if (!quiet) toast(msg);
+}
+$$('[data-quick]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if (!unlocked){ showLock('counter'); return; }
+    markCycle(b.dataset.quick, todayKey());
+    renderAll();
+  });
+});
+
+/* =========================================================
+   RENDER CONTADOR
+   ========================================================= */
+function hitsByDay(){
+  const m = {};
+  S.hits.forEach(h=>{ const k = dkey(new Date(h.t)); (m[k] = m[k] || []).push(h.t); });
+  return m;
+}
+function hitsOnDay(k){ return (hitsByDay()[k] || []).map(t=>({t})).sort((a,b)=>a.t-b.t); }
+function computeStreak(byDay){
+  let n = 0, k = todayKey();
+  while ((byDay[k]||[]).length > 0){ n++; k = addDaysKey(k,-1); if (n > 400) break; }
+  return n;
+}
+
+/* ---------- reloj de solapas (3 dígitos) ---------- */
+let flipState = [0,0,0], flipBuilt = false, flipEls = [];
+function buildFlip(){
+  const box = $('#flipclock'); if (!box || flipBuilt) return;
+  box.innerHTML = [0,1,2].map(()=>`
+    <div class="flip">
+      <div class="half top"><i>0</i></div>
+      <div class="flap top"><i>0</i></div>
+      <div class="half bot"><i>0</i></div>
+      <div class="flap bot"><i>0</i></div>
+      <div class="hinge l"></div><div class="hinge r"></div>
+      <div class="seam"></div>
+    </div>`).join('');
+  flipEls = Array.from(box.querySelectorAll('.flip'));
+  flipBuilt = true;
+}
+function setFlip(n, animate){
+  buildFlip();
+  const txt = String(Math.min(999, Math.max(0, n))).padStart(3,'0');
+  for (let p=0;p<3;p++){
+    const d = Number(txt[p]), el = flipEls[p];
+    if (!el) continue;
+    const old = flipState[p];
+    const topHalf = el.querySelector('.half.top i');
+    const botHalf = el.querySelector('.half.bot i');
+    const ft = el.querySelector('.flap.top'), fb = el.querySelector('.flap.bot');
+    if (d === old){
+      topHalf.textContent = d; botHalf.textContent = d;
+      continue;
+    }
+    if (!animate){
+      topHalf.textContent = d; botHalf.textContent = d;
+      ft.classList.remove('on'); fb.classList.remove('on');
+    } else {
+      ft.querySelector('i').textContent = old;
+      fb.querySelector('i').textContent = d;
+      topHalf.textContent = d;
+      botHalf.textContent = old;
+      ft.classList.remove('on'); fb.classList.remove('on');
+      void ft.offsetWidth;
+      ft.classList.add('on'); fb.classList.add('on');
+      clearTimeout(el._t);
+      el._t = setTimeout(()=>{
+        botHalf.textContent = d;
+        ft.classList.remove('on'); fb.classList.remove('on');
+      }, 560);
+    }
+    flipState[p] = d;
+  }
+}
+/* tira semanal (sólo post-PIN) */
+function drawWeekStrip(byDay){
+  const box = $('#wstrip'); if (!box) return;
+  const d = new Date(); const dow = (d.getDay()+6)%7;
+  const monday = new Date(d); monday.setDate(d.getDate()-dow); monday.setHours(0,0,0,0);
+  const vals = [];
+  for (let i=0;i<7;i++){ const dd = new Date(monday); dd.setDate(monday.getDate()+i); vals.push((byDay[dkey(dd)]||[]).length); }
+  const max = Math.max(...vals, 1);
+  const L = ['L','M','M','J','V','S','D'];
+  box.innerHTML = vals.map((v,i)=>`
+    <div class="wday ${i===dow?'today':''}">
+      <div class="n">${v||''}</div>
+      <div class="wbar"><i style="height:${v? Math.max(14, v/max*100) : 0}%"></i></div>
+      <span>${L[i]}</span>
+    </div>`).join('');
+}
+function renderCounter(animate){
+  const byDay = hitsByDay();
+  const today = byDay[todayKey()] || [];
+  const M = cycleModel();
+  const phase = cyclePhase(todayKey(), M);
+  const shown = (!unlocked && S.hidePreCount) ? 0 : today.length;
+  setFlip(shown, animate === true && prevTodayCount !== null);
+  prevTodayCount = today.length;
+
+  const dn = $('#demoNote'); if (dn) dn.classList.toggle('hidden', STORAGE_OK);
+
+  const tag = $('#phaseTag');
+  if (tag){
+    if (unlocked){
+      const streak = computeStreak(byDay);
+      tag.classList.remove('hidepre');
+      tag.textContent = 'encuentros hoy' + (streak > 1 ? ` · ${streak} días seguidos` : '');
+      tag.style.color = phase === 'men' ? 'var(--rose-l)' : phase === 'ovu' ? 'var(--purp-l)' : '#5d646d';
+    } else {
+      tag.classList.add('hidepre');
+    }
+  }
+  drawWeekStrip(byDay);
+}
+window.addEventListener('resize', ()=>{ if ($('#counter').classList.contains('on')) renderCounter(); });
+
+/* =========================================================
+   CALENDARIO
+   ========================================================= */
+function renderCal(){
+  const M = cycleModel();
+  const byDay = hitsByDay();
+  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  $('#monthLabel').textContent = `${cap1(MONTHS[m])} ${y}`;
+  const startOffset = (new Date(y,m,1).getDay()+6)%7;
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const cells = [];
+  for (let i=startOffset-1;i>=0;i--) cells.push({d:new Date(y,m-1,new Date(y,m,0).getDate()-i).getDate(), mut:true, k:dkey(new Date(y,m-1,new Date(y,m,0).getDate()-i))});
+  for (let d=1;d<=daysInMonth;d++) cells.push({ d, mut:false, k:dkey(new Date(y,m,d)) });
+  let trail = (7 - (cells.length % 7)) % 7;
+  while (cells.length + trail < 35) trail += 7;
+  for (let d=1; d<=trail; d++) cells.push({ d, mut:true, k:dkey(new Date(y,m+1,d)) });
+
+  const tk = todayKey();
+  $('#grid').innerHTML = cells.map(c=>{
+    const hits = byDay[c.k] || [];
+    const ph = cyclePhase(c.k, M);
+    let cls = 'cell';
+    if (c.mut) cls += ' mut';
+    if (ph === 'men') cls += ' period';
+    if (ph === 'menPred') cls += ' period pred';
+    if (ph === 'ovu') cls += ' ovu';
+    if (ph === 'fertPred') cls += ' ovu pred fert';
+    if (c.k === tk) cls += ' today';
+    if (selectedDay === c.k) cls += ' sel';
+    const n = hits.length;
+    return `<div class="${cls}" data-k="${c.k}">${c.d}
+      ${n >= 1 ? '<span class="hit"></span>' : ''}
+      ${n > 1 ? `<span class="sup ${n>3?'big':''}">${n}</span>` : ''}</div>`;
+  }).join('');
+
+  $('#grid').onclick = e=>{
+    const el = e.target.closest('.cell'); if (!el) return;
+    selectedDay = el.dataset.k;
+    renderCal(); renderDayCard(selectedDay);
+    const sc = document.querySelector('#cal .scroll');
+    if (sc) sc.scrollTo({ top: Math.max(0, $('#dayCard').offsetTop - 60), behavior:'smooth' });
+    window.scrollTo(0,0);
+  };
+  renderDayCard(selectedDay);
+}
+function renderDayCard(k){
+  const box = $('#dayCard'); if (!box) return;
+  if (!k){ box.innerHTML = `<div class="empty">Toca un día para ver o marcar</div>`; return; }
+  const M = cycleModel();
+  const hits = hitsOnDay(k);
+  const ph = cyclePhase(k, M);
+  const label = { men:'Periodo', menPred:'Periodo (previsto)', ovu:'Ovulación', fertPred:'Ventana fértil (prevista)' }[ph] || '';
+  const cyc = M.cyc.find(c=> c.start===k || c.end===k || c.ovStart===k || c.ovEnd===k);
+  const tags = [];
+  if (cyc){
+    if (cyc.start === k) tags.push('inicio de periodo');
+    if (cyc.end === k) tags.push('fin de periodo');
+    if (cyc.ovStart === k) tags.push('inicio de ovulación');
+    if (cyc.ovEnd === k && cyc.ovEnd !== cyc.ovStart) tags.push('fin de ovulación');
+  }
+  box.innerHTML = `
+    <div class="spread" style="margin-bottom:10px">
+      <div>
+        <div style="font-size:15px;font-weight:700">${cap1(fmtDateLong(k))}</div>
+        <div class="muted" style="font-size:11.5px;margin-top:3px">${relDay(k)}${label?' · '+label:''}</div>
+      </div>
+      <div class="mono" style="font-size:25px;font-weight:700;color:${hits.length?'#c33a55':'#4a5058'}">${hits.length}</div>
+    </div>
+    ${tags.length ? `<div class="muted" style="font-size:11.5px;margin-bottom:10px;font-family:var(--mono)">${tags.join(' · ')}</div>` : ''}
+    ${hits.length ? `<div style="margin-bottom:12px">${hits.map(h=>`
+        <div class="tl-item">
+          <button class="when mono editbtn" data-edit="${h.t}" title="Editar hora">
+            <svg viewBox="0 0 24 24" class="pen"><path d="M4 20h4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5 4 20Z"/></svg>
+            ${fmtTime(h.t)}
+          </button>
+          <button class="del" data-del="${h.t}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>`).join('')}</div>` : ''}
+    <div class="duo" style="margin-bottom:0">
+      <button class="mbtn" data-mark="hit" style="grid-column:1/-1;border-color:#4a2a33">
+        <span class="plus" style="font-size:15px;color:#c33a55">＋</span> Encuentro</button>
+    </div>
+    <div class="duo" style="margin-top:8px;margin-bottom:0">
+      <button class="mbtn rose" data-mark="periodStart"><span class="dot"></span> Inicio periodo</button>
+      <button class="mbtn rose" data-mark="periodEnd"><span class="dot"></span> Fin periodo</button>
+      <button class="mbtn purp" data-mark="ovulationStart"><span class="dot"></span> Inicio ovulación</button>
+      <button class="mbtn purp" data-mark="ovulationEnd"><span class="dot"></span> Fin ovulación</button>
+    </div>`;
+  box.querySelectorAll('[data-edit]').forEach(b=> b.onclick = ()=> openEditTime(Number(b.dataset.edit)));
+  box.querySelectorAll('[data-del]').forEach(b=> b.onclick = ()=>{
+    const t = Number(b.dataset.del);
+    const i = S.hits.findIndex(h=>h.t===t);
+    if (i>=0){ S.hits.splice(i,1); save(); renderCal(); renderCounter(); toast('Registro eliminado'); }
+  });
+  box.querySelectorAll('[data-mark]').forEach(b=> b.onclick = ()=>{
+    const kind = b.dataset.mark;
+    if (kind === 'hit'){
+      const [Y,Mm,D] = k.split('-').map(Number);
+      const now = new Date();
+      const ts = new Date(Y, Mm-1, D, now.getHours(), now.getMinutes(), now.getSeconds()).getTime();
+      S.hits.push({ t: ts }); save(); renderCal(); renderCounter(); buzz(12); toast('Encuentro agregado · ' + fmtTime(ts));
+      return;
+    }
+    markCycle(kind, k); renderCal(); renderCounter();
+  });
+}
+$('#prevM').onclick = ()=>{ viewMonth.setMonth(viewMonth.getMonth()-1); renderCal(); };
+$('#nextM').onclick = ()=>{ viewMonth.setMonth(viewMonth.getMonth()+1); renderCal(); };
+$('#calToday').onclick = ()=>{ viewMonth = new Date(); viewMonth.setDate(1); selectedDay = todayKey(); renderCal(); };
+$('#calLock').onclick = ()=> showLock('counter');
+$('#cycleLock').onclick = ()=> showLock('counter');
+$('#statsLock').onclick = ()=> showLock('counter');
+$('#configLock').onclick = ()=> showLock('counter');
+$('#brandBtn').onclick = ()=>{ if (!unlocked) showLock('counter'); };
+$('#lockBtn').onclick = ()=>{
+  if (!unlocked){ buzz(10); showLock('counter'); }
+  else showLock('counter');
+};
+
+/* =========================================================
+   CICLO (pantalla)
+   ========================================================= */
+function renderCycle(){
+  const M = cycleModel();
+  const b = $('#cycleBody');
+  const phase = cyclePhase(todayKey(), M);
+  let statusTxt = 'Sin datos todavía. Marca el inicio del periodo.';
+  if (M.predictedStart){
+    const dd = diffDays(todayKey(), M.predictedStart);
+    statusTxt = dd > 0 ? `Próximo periodo: ${cap1(fmtDateLong(M.predictedStart))} · en ${dd} día${dd===1?'':'s'}`
+             : dd === 0 ? 'Periodo previsto: hoy'
+             : `Periodo previsto hace ${-dd} día${dd===-1?'':'s'} — ¿ya marcaste el inicio?`;
+  }
+  const confTxt = { alta:'alta (±2 días)', media:'media (±3-4 días)', baja:'baja' }[M.confidence];
+  const avg = M.avg, bleed = M.avgBleed, ovu = Math.min(M.ovuDay, avg-1);
+  const follLen = Math.max(1, ovu - bleed - 1), lutLen = Math.max(1, avg - ovu + 1);
+  const bar = `
+    <div class="cbar">
+      <div class="s s-men" style="width:${(bleed/avg*100).toFixed(1)}%">${bleed}d</div>
+      <div class="s s-fol" style="width:${(follLen/avg*100).toFixed(1)}%"></div>
+      <div class="s s-ovu" style="width:${(2/avg*100).toFixed(1)}%"></div>
+      <div class="s s-lut" style="width:${(lutLen/avg*100).toFixed(1)}%"></div>
+    </div>
+    <div class="legend" style="margin-top:0;margin-bottom:4px">
+      <span><i style="background:linear-gradient(180deg,#d98ba0,#8a3d52)"></i>Periodo (${bleed}d)</span>
+      <span><i style="background:linear-gradient(180deg,#a984d6,#553077)"></i>Ovulación (día ~${ovu})</span>
+    </div>`;
+  const rows = M.cyc.slice().reverse().map(c=>{
+    const idx = M.cyc.indexOf(c);
+    const next = M.cyc.slice(idx+1).find(x=>x.start);
+    const dur = (c.start && next) ? diffDays(c.start, next.start) : null;
+    const parts = [
+      c.start ? `inicio ${fmtShort(c.start)}` : '',
+      c.end ? `fin ${fmtShort(c.end)}` : (c.start ? 'sin fin' : ''),
+      c.ovStart ? `ovu ${fmtShort(c.ovStart)}${c.ovEnd && c.ovEnd!==c.ovStart ? '→'+fmtShort(c.ovEnd) : ''}` : ''
+    ].filter(Boolean);
+    if (dur) parts.push(`ciclo ${dur}d`);
+    return `<div class="tl-item">
+      <div><div class="when">${c.start ? fmtShort(c.start) : '—'}</div>
+      <div class="sub">${parts.join(' · ')}</div></div>
+      <button class="del" data-delcycle="${c.start||''}|${c.ovStart||''}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>`;
+  }).join('') || `<div class="empty">Aún no hay ciclos marcados</div>`;
+
+  b.innerHTML = `
+    <div class="card">
+      <h3>Situación</h3>
+      <div style="font-size:14.5px;line-height:1.5;margin-bottom:8px;font-weight:600">${statusTxt}</div>
+      ${phase ? `<div class="muted" style="font-size:12px;margin-bottom:4px">Hoy: ${({men:'días de periodo',ovu:'ovulación marcada',menPred:'posible periodo (previsto)',fertPred:'posible ventana fértil (prevista)'})[phase]}</div>`:''}
+      ${bar}
+      <div class="stat"><span>Largo del ciclo</span><b>${M.avg} días${M.samples?` <span class="dim">(${M.samples})</span>`:''}</b></div>
+      <div class="stat"><span>Sangrado</span><b>${M.avgBleed} días</b></div>
+      <div class="stat"><span>Ovulación</span><b>día ${M.ovuDay}</b></div>
+      <div class="stat"><span>Confianza</span><b>${confTxt}</b></div>
+    </div>
+
+    <div class="card">
+      <h3>Marcar hoy</h3>
+      <div class="grouplabel"><i style="background:linear-gradient(180deg,var(--rose-l),var(--rose-d))"></i> Periodo</div>
+      <div class="duo">
+        <button class="mbtn rose" data-cq="periodStart"><span class="dot"></span> Inicio</button>
+        <button class="mbtn rose" data-cq="periodEnd"><span class="dot"></span> Fin</button>
+      </div>
+      <div class="grouplabel"><i style="background:linear-gradient(180deg,var(--purp-l),var(--purp-d))"></i> Ovulación</div>
+      <div class="duo" style="margin-bottom:4px">
+        <button class="mbtn purp" data-cq="ovulationStart"><span class="dot"></span> Inicio</button>
+        <button class="mbtn purp" data-cq="ovulationEnd"><span class="dot"></span> Fin</button>
+      </div>
+      <div class="note" style="margin-top:10px">Marca el <b>primer día de sangrado</b> como inicio: con eso se calcula todo lo demás. Las fechas pasadas se marcan desde el calendario.</div>
+    </div>
+
+    <div class="card"><h3>Historial</h3>${rows}</div>
+
+    <div class="card">
+      <h3>Valores por defecto</h3>
+      <div class="field"><label>Ciclo típico (días)</label><input type="number" id="setAvg" min="18" max="60" value="${S.cfg.avgLen}"></div>
+      <div class="field"><label>Sangrado típico (días)</label><input type="number" id="setBleed" min="1" max="12" value="${S.cfg.avgBleed}"></div>
+      <button class="btn" id="saveAvg">Guardar</button>
+      <div class="note" style="margin-top:9px">Sólo se usan mientras no hay ciclos registrados.</div>
+    </div>
+
+    <div class="card">
+      <h3>Aviso</h3>
+      <div class="note">Estimación estadística, no un método anticonceptivo ni diagnóstico. La ovulación real varía mes a mes.</div>
+    </div>`;
+
+  b.querySelectorAll('[data-cq]').forEach(btn=> btn.onclick = ()=>{
+    markCycle(btn.dataset.cq, todayKey()); renderCycle(); renderCounter();
+  });
+  b.querySelectorAll('[data-delcycle]').forEach(btn=> btn.onclick = ()=>{
+    const [s,o] = btn.dataset.delcycle.split('|');
+    S.cycles = S.cycles.filter(c=> !((c.start||'') === s && (c.ovStart||'') === o));
+    save(); renderCycle(); renderCounter();
+  });
+  b.querySelector('#saveAvg').onclick = ()=>{
+    S.cfg.avgLen = Math.min(60, Math.max(18, Number(b.querySelector('#setAvg').value) || 28));
+    S.cfg.avgBleed = Math.min(12, Math.max(1, Number(b.querySelector('#setBleed').value) || 5));
+    save(); renderCycle(); toast('Guardado');
+  };
+}
+
+/* =========================================================
+   STATS
+   ========================================================= */
+$$('[data-range]').forEach(b=> b.onclick = ()=>{
+  statsRange = b.dataset.range;
+  $$('[data-range]').forEach(x=>x.classList.toggle('on', x===b));
+  renderStats();
+});
+const pct = (a,b) => b ? Math.round(a/b*100)+'%' : '0%';
+function renderStats(){
+  const M = cycleModel();
+  const byDay = hitsByDay();
+  const tk = todayKey();
+  let from = null;
+  if (statsRange === 'week') from = addDaysKey(tk, -6);
+  if (statsRange === 'month') from = addDaysKey(tk, -29);
+  const list = S.hits.filter(h=> !from || dkey(new Date(h.t)) >= from).map(h=>({ t:h.t, k:dkey(new Date(h.t)) }));
+  const total = list.length;
+  const days = statsRange === 'week' ? 7 : statsRange === 'month' ? 30 : null;
+  const firstHit = S.hits.slice().sort((a,b)=>a.t-b.t)[0];
+  const spanDays = firstHit ? diffDays(dkey(new Date(firstHit.t)), tk)+1 : 1;
+  const perDay = days ? total/days : S.hits.length/Math.max(1, spanDays);
+
+  const dowCount = [0,0,0,0,0,0,0];
+  S.hits.forEach(h=> dowCount[new Date(h.t).getDay()]++);
+  const dowLabel = ['domingos','lunes','martes','miércoles','jueves','viernes','sábados'][dowCount.indexOf(Math.max(...dowCount))];
+
+  let inMen = 0, inFert = 0, inNone = 0;
+  S.hits.forEach(h=>{
+    const k = dkey(new Date(h.t)); const ph = cyclePhase(k, M);
+    if (ph === 'men' || ph === 'menPred') inMen++;
+    else if (ph === 'ovu' || ph === 'fertPred') inFert++;
+    else inNone++;
+  });
+
+  const lastH = S.hits.slice().sort((a,b)=>b.t-a.t)[0];
+  const lastTxt = lastH ? `${relDay(dkey(new Date(lastH.t)))} ${fmtTime(lastH.t)}` : '—';
+
+  const bars = [];
+  for (let i=13;i>=0;i--) bars.push({ k: addDaysKey(tk,-i), n: (byDay[addDaysKey(tk,-i)]||[]).length });
+  const maxBar = Math.max(...bars.map(b=>b.n), 1);
+  const streak = computeStreak(byDay);
+
+  let gaps = [];
+  const sorted = S.hits.slice().sort((a,b)=>a.t-b.t);
+  for (let i=1;i<sorted.length;i++) gaps.push((sorted[i].t - sorted[i-1].t)/86400000);
+  gaps = gaps.filter(g=> g > 0 && g < 60);
+  const avgGap = gaps.length ? gaps.reduce((a,b)=>a+b,0)/gaps.length : null;
+
+  $('#statsBody').innerHTML = `
+    <div class="card">
+      <h3>${statsRange==='week'?'Últimos 7 días':statsRange==='month'?'Últimos 30 días':'Histórico'}</h3>
+      <div class="stat"><span>Encuentros</span><b>${total}</b></div>
+      <div class="stat"><span>Promedio por día</span><b>${perDay.toFixed(1)}</b></div>
+      <div class="stat"><span>Días con actividad</span><b>${new Set(list.map(x=>x.k)).size}</b></div>
+      <div class="stat"><span>Racha actual</span><b>${streak} d</b></div>
+      <div class="stat"><span>Último registro</span><b>${lastTxt}</b></div>
+      <div class="stat"><span>Intervalo medio</span><b>${avgGap ? (avgGap<1 ? Math.max(1,Math.round(avgGap*24))+' h' : avgGap.toFixed(1)+' d') : '—'}</b></div>
+      <div class="stat"><span>Día más frecuente</span><b>${S.hits.length?dowLabel:'—'}</b></div>
+    </div>
+
+    <div class="card">
+      <h3>Últimos 14 días</h3>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:92px;margin-top:4px">
+        ${bars.map(b=>{
+          const h = Math.max(5, Math.round(b.n/maxBar*84));
+          return `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px">
+            <div class="mono" style="font-size:9px;color:#6a7078">${b.n||''}</div>
+            <div style="width:100%;height:${h}px;border-radius:4px;background:${b.n?'linear-gradient(180deg,#c33a55,#6b1024)':'#1a1d22'};
+                        box-shadow:inset 0 1px 0 rgba(255,255,255,.07)"></div>
+            <div class="mono" style="font-size:8px;color:#4f555d">${parseKey(b.k).getDate()}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Cruce con el ciclo</h3>
+      <div class="stat"><span>En periodo</span><b>${inMen} · ${pct(inMen,S.hits.length)}</b></div>
+      <div class="stat"><span>En ovulación / ventana fértil</span><b>${inFert} · ${pct(inFert,S.hits.length)}</b></div>
+      <div class="stat"><span>Resto del ciclo</span><b>${inNone} · ${pct(inNone,S.hits.length)}</b></div>
+    </div>
+
+    <div class="card">
+      <h3>Día por día</h3>
+      ${(()=>{
+        const groups = {};
+        S.hits.slice().sort((a,b)=>b.t-a.t).forEach(h=>{
+          const k = dkey(new Date(h.t)); (groups[k] = groups[k]||[]).push(h.t);
+        });
+        const keys = Object.keys(groups).slice(0, HIST_LIMIT);
+        if (!keys.length) return `<div class="empty">Sin registros</div>`;
+        return keys.map(k=>`
+          <div class="tl-item">
+            <div><div class="when">${cap1(fmtDateLong(k))}</div>
+            <div class="sub">${groups[k].slice().sort().map(t=>
+              `<button class="tchip" data-editstats="${t}">${fmtTime(t)}</button>`).join('')}</div></div>
+            <b class="mono" style="color:#c33a55;font-size:15px">${groups[k].length}</b>
+          </div>`).join('');
+      })()}
+    </div>`;
+  $$('#statsBody [data-editstats]').forEach(b=> b.onclick = ()=> openEditTime(Number(b.dataset.editstats)));
+}
+
+/* =========================================================
+   CONFIG
+   ========================================================= */
+function renderConfig(){
+  $('#configBody').innerHTML = `
+    <div class="card">
+      <h3>PIN</h3>
+      <div class="note" style="margin-bottom:11px">Se pide para ver el calendario, el ciclo, los datos y los ajustes. El botón de registrar siempre está libre.</div>
+      <div class="field"><label>PIN actual</label><input type="number" id="oldPin" inputmode="numeric" placeholder="••••"></div>
+      <div class="field"><label>PIN nuevo (4 dígitos)</label><input type="number" id="newPin" inputmode="numeric" placeholder="••••"></div>
+      <button class="btn" id="savePin">Cambiar PIN</button>
+    </div>
+
+    <div class="card">
+      <h3>Bloqueo</h3>
+      <div class="stat"><span>Auto-bloqueo al salir</span>
+        <button class="btn" id="tglAuto" style="width:auto;padding:8px 13px;font-size:12px">${S.lockSecs?'Activo · '+S.lockSecs+'s':'Desactivado'}</button></div>
+      <div class="stat"><span>Bloquear ahora</span>
+        <button class="btn" id="lockNow" style="width:auto;padding:8px 13px;font-size:12px">Bloquear</button></div>
+      <div class="note" style="margin-top:11px">Los datos no salen del teléfono. El PIN es un candado de la app, no cifrado del archivo.</div>
+    </div>
+
+    <div class="card">
+      <h3>Feedback</h3>
+      <div class="stat"><span>Vibración</span>
+        <button class="btn" id="tglHap" style="width:auto;padding:8px 13px;font-size:12px">${S.haptic?'Activada':'Desactivada'}</button></div>
+      <div class="stat"><span>Sonido (clic)</span>
+        <button class="btn" id="tglSnd" style="width:auto;padding:8px 13px;font-size:12px">${S.sound?'Activado':'Desactivado'}</button></div>
+      <div class="stat"><span>Ocultar cifras antes del PIN</span>
+        <button class="btn" id="tglHide" style="width:auto;padding:8px 13px;font-size:12px">${S.hidePreCount?'Ocultas':'Visibles'}</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Datos</h3>
+      <button class="btn" id="expBtn" style="margin-bottom:8px">Exportar respaldo</button>
+      <button class="btn" id="impBtn" style="margin-bottom:8px">Importar respaldo</button>
+      <button class="btn" id="eraseBtn" style="color:#d06579">Borrar todo</button>
+      <input type="file" id="impFile" accept="application/json" class="hidden">
+      <div class="note" style="margin-top:11px">Si borras los datos del navegador o cambias de teléfono sin respaldo, se pierde el historial.</div>
+    </div>
+
+    <div class="card">
+      <h3>Counters</h3>
+      <div class="note mono">v2.0 · ${S.hits.length} registros · ${S.cycles.length} ciclos</div>
+    </div>`;
+
+  $('#savePin').onclick = ()=>{
+    const o = $('#oldPin').value.trim(), n = $('#newPin').value.trim();
+    if (o !== S.pin){ toast('PIN actual incorrecto'); return; }
+    if (!/^\d{4}$/.test(n)){ toast('Debe tener 4 dígitos'); return; }
+    S.pin = n; save(); toast('PIN actualizado'); renderConfig();
+  };
+  $('#tglAuto').onclick = ()=>{ S.lockSecs = S.lockSecs ? 0 : 60; save(); renderConfig(); };
+  $('#lockNow').onclick = ()=> showLock('counter');
+  $('#tglHap').onclick = ()=>{ S.haptic = !S.haptic; save(); renderConfig(); };
+  $('#tglSnd').onclick = ()=>{ S.sound = !S.sound; if (S.sound) beep(); save(); renderConfig(); };
+  $('#tglHide').onclick = ()=>{ S.hidePreCount = !S.hidePreCount; save(); renderConfig(); renderCounter(); };
+  $('#expBtn').onclick = ()=>{
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `counters-${todayKey()}.json`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    toast('Respaldo descargado');
+  };
+  $('#impBtn').onclick = ()=> $('#impFile').click();
+  $('#impFile').onchange = e=>{
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const d = JSON.parse(r.result);
+        if (!Array.isArray(d.hits)) throw new Error('formato');
+        S = Object.assign({}, DEFAULTS, d);
+        S.cfg = Object.assign({}, DEFAULTS.cfg, d.cfg || {});
+        save(); toast('Respaldo importado'); renderAll(); renderConfig();
+      }catch(err){ toast('Archivo inválido'); }
+    };
+    r.readAsText(f);
+  };
+  $('#eraseBtn').onclick = ()=>{
+    openSheet(`<h2>Borrar todo</h2><div class="sub">Elimina registros, ciclos y el PIN. No se puede deshacer.</div>
+      <button class="btn" id="yesErase" style="color:#d06579;margin-bottom:8px">Sí, borrar todo</button>
+      <button class="btn" id="noErase">Cancelar</button>`, ()=>{
+      $('#yesErase').onclick = ()=>{ localStorage.removeItem(KEY); S = load(); save(); closeSheet(); showLock('counter'); };
+      $('#noErase').onclick = closeSheet;
+    });
+  };
+}
+
+/* ---------- editar hora de un registro ---------- */
+function openEditTime(ts){
+  const d = new Date(ts);
+  const k = dkey(d);
+  const hh = pad(d.getHours()), mm = pad(d.getMinutes());
+  openSheet(`
+    <h2>Editar hora</h2>
+    <div class="sub">${cap1(fmtDateLong(k))}</div>
+    <div class="row" style="gap:10px;margin-bottom:14px">
+      <div class="field" style="flex:1;margin:0">
+        <label>Hora (0–23)</label>
+        <input type="number" id="edH" min="0" max="23" inputmode="numeric" value="${hh}">
+      </div>
+      <div class="field" style="flex:1;margin:0">
+        <label>Minutos</label>
+        <input type="number" id="edM" min="0" max="59" inputmode="numeric" value="${mm}">
+      </div>
+    </div>
+    <div class="row" style="gap:8px;margin-bottom:14px">
+      <button class="btn" id="edMinus" style="flex:1;padding:10px;font-size:13px">− 5 min</button>
+      <button class="btn" id="edPlus" style="flex:1;padding:10px;font-size:13px">+ 5 min</button>
+    </div>
+    <div class="row" style="gap:8px">
+      <button class="btn" id="edCancel" style="flex:1">Cancelar</button>
+      <button class="btn primary" id="edSave" style="flex:1.4">Guardar</button>
+    </div>
+  `, ()=>{
+    const apply = ()=>{
+      const h = Math.min(23, Math.max(0, Number($('#edH').value || 0)));
+      const m = Math.min(59, Math.max(0, Number($('#edM').value || 0)));
+      const base = new Date(parseKey(k));
+      base.setHours(h, m, d.getSeconds(), 0);
+      return base.getTime();
+    };
+    const shift = mins=>{
+      const h = Number($('#edH').value || 0), m = Number($('#edM').value || 0);
+      let total = h*60 + m + mins;
+      total = (total + 1440) % 1440;
+      $('#edH').value = pad(Math.floor(total/60));
+      $('#edM').value = pad(total%60);
+    };
+    $('#edMinus').onclick = ()=> shift(-5);
+    $('#edPlus').onclick = ()=> shift(5);
+    $('#edCancel').onclick = closeSheet;
+    $('#edSave').onclick = ()=>{
+      const nt = apply();
+      const i = S.hits.findIndex(h=>h.t === ts);
+      if (i >= 0){ S.hits[i].t = nt; save(); closeSheet(); toast('Hora actualizada · ' + fmtTime(nt));
+        renderCal(); renderCounter(); }
+      else { closeSheet(); toast('No se encontró el registro'); }
+    };
+  });
+}
+
+/* ---------- sheet ---------- */
+function openSheet(html, cb){ $('#sheet').innerHTML = html; $('#modal').classList.add('on'); cb && cb(); }
+function closeSheet(){ $('#modal').classList.remove('on'); }
+$('#modal').addEventListener('click', e=>{ if (e.target.id === 'modal') closeSheet(); });
+
+/* ---------- auto-bloqueo ---------- */
+let hiddenAt = null;
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden){
+    if (unlocked) hiddenAt = Date.now();
+  } else {
+    if (unlocked && S.lockSecs && hiddenAt && Date.now() - hiddenAt > S.lockSecs*1000){
+      const cur = PRIVATE.find(id=> $('#'+id).classList.contains('on'));
+      showLock(cur || 'counter');
+    }
+    hiddenAt = null;
+  }
+});
+
+/* ---------- util ---------- */
+function renderAll(){
+  renderCounter();
+  if ($('#cal').classList.contains('on')) renderCal();
+  if ($('#cycle').classList.contains('on')) renderCycle();
+  if ($('#stats').classList.contains('on')) renderStats();
+}
+
+/* swipe: volver al contador */
+let tx = 0, ty = 0;
+document.addEventListener('touchstart', e=>{ tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive:true });
+document.addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (dx > 90 && Math.abs(dy) < 60 && ['cal','cycle','stats','config'].some(id=> $('#'+id).classList.contains('on'))) go('counter');
+}, { passive:true });
+
+/* ---------- init ---------- */
+buildFlip();
+selectedDay = todayKey();
+go('counter');
+renderAll();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
