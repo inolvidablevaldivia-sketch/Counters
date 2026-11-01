@@ -1,0 +1,10 @@
+# sistema / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# respaldos locales de la app (pueden contener datos personales)
+counters-*.json
+backup*.json

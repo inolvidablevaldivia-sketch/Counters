@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Counters">
+  <defs>
+    <linearGradient id="cBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#31363e"/>
+      <stop offset=".45" stop-color="#1b1e24"/>
+      <stop offset="1" stop-color="#0d0f12"/>
+    </linearGradient>
+    <linearGradient id="cBtn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a505a"/>
+      <stop offset=".55" stop-color="#23272d"/>
+      <stop offset="1" stop-color="#12151a"/>
+    </linearGradient>
+    <linearGradient id="cEnc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b02038"/>
+      <stop offset=".55" stop-color="#8a1327"/>
+      <stop offset="1" stop-color="#5d0a18"/>
+    </linearGradient>
+    <linearGradient id="cWin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#05070a"/>
+      <stop offset="1" stop-color="#0f1319"/>
+    </linearGradient>
+    <radialGradient id="cGloss" cx=".34" cy=".22" r=".85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cRim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b626d"/>
+      <stop offset=".5" stop-color="#2a2f36"/>
+      <stop offset="1" stop-color="#454b55"/>
+    </linearGradient>
+  </defs>
+
+  <!-- cuerpo -->
+  <rect x="15" y="16" width="98" height="96" rx="22" fill="url(#cBody)" stroke="url(#cRim)" stroke-width="2"/>
+  <rect x="19" y="20" width="90" height="88" rx="19" fill="url(#cGloss)"/>
+
+  <!-- tornillos -->
+  <g fill="#2b3037" stroke="#4d535d" stroke-width="1.2">
+    <circle cx="26" cy="27" r="3.1"/>
+    <circle cx="102" cy="27" r="3.1"/>
+    <circle cx="26" cy="101" r="3.1"/>
+    <circle cx="102" cy="101" r="3.1"/>
+  </g>
+  <g stroke="#161a1f" stroke-width="1.1">
+    <path d="M23.7 27h4.6M99.7 27h4.6M23.7 101h4.6M99.7 101h4.6"/>
+  </g>
+
+  <!-- botón mecánico -->
+  <circle cx="64" cy="55" r="25" fill="#08090b" opacity=".55"/>
+  <circle cx="64" cy="53" r="24" fill="url(#cEnc)"/>
+  <circle cx="64" cy="53" r="24" fill="none" stroke="#d3405c" stroke-opacity=".5" stroke-width="1.4"/>
+  <circle cx="64" cy="53" r="17" fill="url(#cBtn)"/>
+  <circle cx="64" cy="53" r="17" fill="none" stroke="#0b0d10" stroke-opacity=".8" stroke-width="1"/>
+  <ellipse cx="58" cy="45" rx="9" ry="6" fill="#ffffff" opacity=".10"/>
+
+  <!-- ventana de 3 dígitos -->
+  <rect x="33" y="82" width="62" height="21" rx="6" fill="url(#cWin)" stroke="#3c424b" stroke-width="1.4"/>
+  <path d="M33 92.5h62" stroke="#000" stroke-opacity=".55" stroke-width="1"/>
+  <text x="64" y="102.5" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+        font-size="15" font-weight="700" letter-spacing="3.2" fill="#f3f1ee">001</text>
+</svg>
